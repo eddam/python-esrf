@@ -38,11 +38,12 @@ def recad_to_h5_chunk(file_name, vmin, vmax, shape):
         print "the shape is not consistent with the size of the file!"
         return
     data = np.memmap(file_name, dtype=np.float32, shape=shape)
-    data_uint8 = np.empty(shape, dtype=np.uint8)
-    chunk_size = 200
+    data_uint8 = np.memmap('/tmp/recad.raw', dtype=np.uint8, shape=shape,
+                           mode='w+')
+    chunk_size = 50
     len_data = shape[0]
     for i in range((len_data - 1)/chunk_size + 1):
-        print i
+        #print i
         beg = i * chunk_size
         end = (i + 1) * chunk_size
         if end >= len_data:
@@ -50,12 +51,9 @@ def recad_to_h5_chunk(file_name, vmin, vmax, shape):
         dat = np.copy(data[beg:end])
         mask_inf = ne.evaluate("dat < vmin")
         dat = ne.evaluate("(1 - mask_inf) * dat + vmin * mask_inf")
-        print "min ok"
         mask_sup = ne.evaluate("dat > vmax")
         dat = ne.evaluate("(1 - mask_sup) * dat + vmax * mask_sup")
-        print "max ok"
         dat = ne.evaluate("255 * (dat - vmin) / (vmax - vmin)")
-        print "recad ok"
         data_uint8[beg:end] = dat.astype(np.uint8)[:]
         del dat
     write_chdf([data_uint8], compress=3, output_name=h5_name)
@@ -129,7 +127,7 @@ def recad_dir(pattern, vmin, vmax, shape, discard_vol=False,
             if os.path.exists(h5_name):
                 print "already exists"
                 continue
-        recad_to_h5(file_name, vmin, vmax, shape)
+        recad_to_h5_chunk(file_name, vmin, vmax, shape)
         if discard_vol and os.path.exists(h5_name):
             os.remove(file_name)
             os.remove(file_name + '.info')
